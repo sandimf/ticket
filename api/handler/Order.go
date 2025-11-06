@@ -3,12 +3,14 @@ package handler
 import (
 	"api-fiber-gorm/database" 
 	"api-fiber-gorm/model"    
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 )
+
 // Create order request
 type CreateOrderRequest struct {
 	UserID uint `json:"user_id"`
@@ -17,6 +19,7 @@ type CreateOrderRequest struct {
 		Quantity     int  `json:"quantity"`
 	} `json:"items"`
 }
+
 func CreateOrder(c *fiber.Ctx) error {
 	db := database.DB
 	req := new(CreateOrderRequest)
@@ -64,6 +67,7 @@ func CreateOrder(c *fiber.Ctx) error {
 	// Kembalikan data order yang baru dibuat
 	return c.JSON(fiber.Map{"status": "success", "message": "Order created successfully", "data": orderToCreate})
 }
+
 func GetOrder(c *fiber.Ctx) error {
 	id := c.Params("id")
 	db := database.DB
@@ -74,6 +78,21 @@ func GetOrder(c *fiber.Ctx) error {
 	}
 	return c.JSON(fiber.Map{"status": "success", "message": "Order found", "data": order})
 }
+
+// GetOrderByInvoice: ambil order berdasarkan kode invoice
+func GetOrderByInvoice(c *fiber.Ctx) error {
+	invoice := c.Params("invoice")
+	db := database.DB
+	var order model.Order
+	if err := db.Preload("User").Preload("OrderItems").Preload("OrderItems.TicketType").Where("invoice_code = ?", invoice).First(&order).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(404).JSON(fiber.Map{"status": "error", "message": "No order found with invoice", "data": nil})
+		}
+		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to fetch order", "data": err.Error()})
+	}
+	return c.JSON(fiber.Map{"status": "success", "message": "Order found", "data": order})
+}
+
 func GetOrdersForUser(c *fiber.Ctx) error {
 	userID := c.Params("user_id")
 	db := database.DB
@@ -81,6 +100,16 @@ func GetOrdersForUser(c *fiber.Ctx) error {
 	db.Where("user_id = ?", userID).Preload("OrderItems").Find(&orders)
 	return c.JSON(fiber.Map{"status": "success", "message": "Orders for user found", "data": orders})
 }
+
+func GetAllOrders(c *fiber.Ctx) error {
+    db := database.DB
+    var orders []model.Order
+    if err := db.Preload("User").Preload("OrderItems").Preload("OrderItems.TicketType").Find(&orders).Error; err != nil {
+        return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to fetch orders", "data": err.Error()})
+    }
+    return c.JSON(fiber.Map{"status": "success", "message": "Orders retrieved successfully", "data": orders})
+}
+
 func DeleteOrder(c *fiber.Ctx) error {
 	id := c.Params("id")
 	db := database.DB
@@ -156,4 +185,61 @@ func UpdateOrderStatus(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{"status": "success", "message": "Order status updated and tickets issued (if paid)", "data": updatedOrder})
+}
+
+// UpdateOrderStatusByInvoice: update status berdasarkan kode invoice
+func UpdateOrderStatusByInvoice(c *fiber.Ctx) error {
+	invoice := c.Params("invoice")
+	db := database.DB
+
+	type StatusUpdatePayload struct {
+		PaymentStatus string `json:"payment_status"`
+	}
+	var payload StatusUpdatePayload
+	if err := c.BodyParser(&payload); err != nil {
+		return c.Status(400).JSON(fiber.Map{"status": "error", "message": "Invalid request body", "data": err.Error()})
+	}
+
+	var updatedOrder model.Order
+
+	err := db.Transaction(func(tx *gorm.DB) error {
+		var order model.Order
+		if err := tx.Preload("OrderItems").Preload("User").Where("invoice_code = ?", invoice).First(&order).Error; err != nil {
+			return gorm.ErrRecordNotFound
+		}
+
+		order.PaymentStatus = payload.PaymentStatus
+		if err := tx.Save(&order).Error; err != nil {
+			return err
+		}
+
+		if order.PaymentStatus == "paid" {
+			for _, item := range order.OrderItems {
+				for i := 0; i < item.Quantity; i++ {
+					newTicket := model.IssuedTicket{
+						OrderItemID:   item.ID,
+						AttendeeName:  order.User.FullName,
+						AttendeeEmail: order.User.Email,
+						TicketCode:    fmt.Sprintf("TIX-%d-%d-%d", order.ID, item.ID, i),
+						CheckedIn:     false,
+					}
+					if err := tx.Create(&newTicket).Error; err != nil {
+						return err
+					}
+				}
+			}
+		}
+
+		updatedOrder = order
+		return nil
+	})
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(404).JSON(fiber.Map{"status": "error", "message": "No order found with invoice", "data": nil})
+		}
+		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to update order status", "data": err.Error()})
+	}
+
+	return c.JSON(fiber.Map{"status": "success", "message": "Order status updated by invoice and tickets issued (if paid)", "data": updatedOrder})
 }

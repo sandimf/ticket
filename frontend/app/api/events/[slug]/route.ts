@@ -5,10 +5,10 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const slug = params.slug;
+    const { slug } = await params;
     const headersList = await headers();
     const cookie = headersList.get("cookie");
 
@@ -17,7 +17,7 @@ export async function GET(
       goHeaders.append("Cookie", cookie);
     }
 
-    const response = await fetch(`${API_URL}/event/slug/${slug}`, {
+    const response = await fetch(`${API_URL}/event/slug/${slug}` ,{
       method: "GET",
       headers: goHeaders,
       cache: "no-store",

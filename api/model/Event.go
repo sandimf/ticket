@@ -19,6 +19,7 @@ type Event struct {
 	EndDateTime    time.Time `gorm:"not null" json:"end_datetime"`
 	PosterImageURL string    `gorm:"size:255" json:"poster_image_url"`
 	Status         string    `gorm:"size:50;not null;default:'draft'" json:"status"` // 'draft', 'published', 'completed', 'cancelled'
+	Featured       bool      `gorm:"default:false" json:"featured"`
 	CreatedAt      time.Time `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt      time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 

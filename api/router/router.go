@@ -36,6 +36,7 @@ func SetupRoutes(app *fiber.App) {
 	event.Get("/slug/:slug", handler.GetEventBySlug)
 	event.Post("/", middleware.Protected(), handler.CreateEvent)
 	event.Patch("/:id", middleware.Protected(), handler.UpdateEvent)
+	event.Patch("/:id/featured", middleware.Protected(), handler.ToggleEventFeatured)
 	event.Delete("/:id", middleware.Protected(), handler.DeleteEvent)
 
 	// TicketType
@@ -49,11 +50,26 @@ func SetupRoutes(app *fiber.App) {
 
 	// Order
 	order := api.Group("/order")
+	order.Get("/", handler.GetAllOrders)
 	order.Get("/:id", handler.GetOrder)
 	order.Get("/user/:user_id", handler.GetOrdersForUser)
-	order.Post("/", middleware.Protected(), handler.CreateOrder)
+	// Guest order allowed: remove Protected()
+	order.Post("/", handler.CreateOrder)
 	order.Patch("/:id/status", middleware.Protected(), handler.UpdateOrderStatus)
+	// Allow uploading payment proof without auth; accept guest details
+	order.Post("/:id/payment-proof", handler.UploadPaymentProof)
 	order.Delete("/:id", middleware.Protected(), handler.DeleteOrder)
+	// Tambah route berbasis invoice
+	order.Get("/invoice/:invoice", handler.GetOrderByInvoice)
+	order.Patch("/invoice/:invoice/status", middleware.Protected(), handler.UpdateOrderStatusByInvoice)
+	order.Post("/invoice/:invoice/payment-proof", handler.UploadPaymentProofByInvoice)
+
+	// Banner
+	banner := api.Group("/banner")
+	banner.Get("/", handler.GetAllBanners)
+	banner.Post("/", middleware.Protected(), handler.CreateBanner)
+	banner.Patch("/:id", middleware.Protected(), handler.UpdateBanner)
+	banner.Delete("/:id", middleware.Protected(), handler.DeleteBanner)
 
 	// IssuedTicket
 	issued := api.Group("/issued-ticket")

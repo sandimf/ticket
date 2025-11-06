@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { GO_BACKEND_URL } from '@/lib/constants';
+
+const GO_BACKEND_URL = process.env.GO_BACKEND_URL || 'http://localhost:8080';
 
 export async function GET(request: NextRequest) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies(); // ← tambahkan await di sini
   const token = cookieStore.get('token')?.value;
   const userId = cookieStore.get('user_id')?.value;
 
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
     });
 
     const data = await response.json();
-    
+
     if (!response.ok) {
       return NextResponse.json(
         { status: 'error', message: data.message || 'Failed to fetch orders' },

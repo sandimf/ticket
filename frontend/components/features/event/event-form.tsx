@@ -1,6 +1,18 @@
 "use client";
 
 import React, { useState } from "react";
+import { format } from "date-fns";
+import {
+  CalendarIcon,
+  Loader2,
+  PlusCircle,
+  Trash2,
+} from "lucide-react";
+import { useCreateEvent } from "@/hooks/useCreateEvent";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils"; // Pastikan Anda mengimpor utilitas 'cn'
+
+// Shadcn UI Components
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,17 +24,34 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { format } from "date-fns";
-import { Loader2 } from "lucide-react";
-import { useCreateEvent } from "@/hooks/useCreateEvent";
-import { toast } from "sonner";
-
-// Pastikan import dari lokasi yang benar (sesuai struktur project Tuan)
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Dropzone,
   DropzoneContent,
   DropzoneEmptyState,
 } from "@/components/ui/dropzone";
+
+// Tipe data untuk tiket (disesuaikan untuk Date object)
+type TicketType = {
+  name: string;
+  description: string;
+  price: number;
+  total_stock: number;
+  sales_start_date?: Date;
+  sales_end_date?: Date;
+};
 
 export function EventForm() {
   const [city, setCity] = useState<string>("");
@@ -32,21 +61,9 @@ export function EventForm() {
   const [status, setStatus] = useState<string>("draft");
   const [posterFiles, setPosterFiles] = useState<File[] | undefined>();
 
-  const handleDrop = (files: File[]) => {
-    console.log(files);
-    setPosterFiles(files);
-  };
-
-  const [ticketTypes, setTicketTypes] = useState<
-    Array<{
-      name: string;
-      description: string;
-      price: number;
-      total_stock: number;
-      sales_start_date?: Date;
-      sales_end_date?: Date;
-    }>
-  >([{ name: "", description: "", price: 0, total_stock: 0 }]);
+  const [ticketTypes, setTicketTypes] = useState<TicketType[]>([
+    { name: "", description: "", price: 0, total_stock: 0 },
+  ]);
 
   const addTicketType = () => {
     setTicketTypes((prev) => [
@@ -59,12 +76,22 @@ export function EventForm() {
     setTicketTypes((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const updateTicketType = (index: number, field: string, value: any) => {
+  const updateTicketType = (
+    index: number,
+    field: keyof TicketType,
+    value: any
+  ) => {
     setTicketTypes((prev) =>
       prev.map((tt, i) => (i === index ? { ...tt, [field]: value } : tt))
     );
   };
 
+  const handleDrop = (files: File[]) => {
+    console.log(files);
+    setPosterFiles(files);
+  };
+
+  // Logika submit tetap sama
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -76,7 +103,7 @@ export function EventForm() {
     formData.set("city", city);
 
     try {
-      const created = await mutateAsync(formData, { onSuccess: () => { } });
+      const created = await mutateAsync(formData, { onSuccess: () => {} });
       const eventId = (created as any)?.id;
       if (!eventId) throw new Error("Event ID tidak ditemukan");
 
@@ -120,247 +147,357 @@ export function EventForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
-      {/* --- Poster Upload --- */}
-      <div className="space-y-2">
-        <Label htmlFor="poster_image">Poster Event</Label>
-        <Dropzone
-          accept={{ "image/*": [] }}
-          maxFiles={1}
-          maxSize={1024 * 1024 * 5}
-          minSize={1024}
-          onDrop={handleDrop}
-          onError={console.error}
-          src={posterFiles}
-          disabled={isPending}
-        >
-          <DropzoneEmptyState />
-          <DropzoneContent />
-        </Dropzone>
-      </div>
-      <span>Diselengarakan Oleh: sandi</span>
+    <form onSubmit={onSubmit} className="space-y-8">
+      {/* --- Card 1: Detail Event --- */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Detail Event</CardTitle>
+          <CardDescription>
+            Informasi dasar mengenai event Anda.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="poster_image">Poster Event</Label>
+            <Dropzone
+              accept={{ "image/*": [] }}
+              maxFiles={1}
+              maxSize={1024 * 1024 * 5}
+              onDrop={handleDrop}
+              onError={console.error}
+              src={posterFiles}
+              disabled={isPending}
+            >
+              <DropzoneEmptyState />
+              <DropzoneContent />
+            </Dropzone>
+          </div>
 
-      {/* --- Judul --- */}
-      <div className="space-y-2">
-        <Label htmlFor="title">Judul Event</Label>
-        <Input
-          id="title"
-          name="title"
-          placeholder="Judul Event"
-          required
-          disabled={isPending}
-        />
-      </div>
+          <div className="space-y-2">
+            <Label htmlFor="title">Judul Event</Label>
+            <Input
+              id="title"
+              name="title"
+              placeholder="Mis: Konser Amal"
+              required
+              disabled={isPending}
+            />
+          </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="description">Deskripsi</Label>
-        <Textarea
-          id="description"
-          name="description"
-          placeholder="Jelaskan event Anda..."
-          disabled={isPending}
-        />
-      </div>
+          <div className="space-y-2">
+            <Label htmlFor="description">Deskripsi</Label>
+            <Textarea
+              id="description"
+              name="description"
+              placeholder="Jelaskan event Anda..."
+              disabled={isPending}
+              rows={5}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* --- Venue & Kota --- */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2">
-          <Label htmlFor="venue_name">Nama Venue / Lokasi</Label>
-          <Input
-            id="venue_name"
-            name="venue_name"
-            placeholder="Nama Venue / Lokasi"
-            required
-            disabled={isPending}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="city">Kota</Label>
-          <Select
-            name="city"
-            disabled={isPending}
-            value={city}
-            onValueChange={(value) => setCity(value)}
-          >
-            <SelectTrigger id="city" className="w-full">
-              <SelectValue placeholder="Pilih kota" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="jakarta">Jakarta</SelectItem>
-              <SelectItem value="bandung">Bandung</SelectItem>
-              <SelectItem value="surabaya">Surabaya</SelectItem>
-              <SelectItem value="medan">Medan</SelectItem>
-              <SelectItem value="yogyakarta">Yogyakarta</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      {/* --- Card 2: Waktu & Lokasi --- */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Waktu & Lokasi</CardTitle>
+          <CardDescription>
+            Kapan dan di mana event akan diadakan.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <Label htmlFor="venue_name">Nama Venue / Lokasi</Label>
+            <Input
+              id="venue_name"
+              name="venue_name"
+              placeholder="Mis: Stadion Gelora"
+              required
+              disabled={isPending}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="city">Kota</Label>
+            <Select
+              name="city"
+              disabled={isPending}
+              value={city}
+              onValueChange={setCity}
+            >
+              <SelectTrigger id="city">
+                <SelectValue placeholder="Pilih kota" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="jakarta">Jakarta</SelectItem>
+                <SelectItem value="bandung">Bandung</SelectItem>
+                <SelectItem value="surabaya">Surabaya</SelectItem>
+                <SelectItem value="medan">Medan</SelectItem>
+                <SelectItem value="yogyakarta">Yogyakarta</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-      {/* --- Kategori & Status --- */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2">
-          <Label htmlFor="category">Kategori</Label>
-          <Input
-            id="category"
-            name="category"
-            placeholder="Konser / Workshop / Sport"
-            required
-            disabled={isPending}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="status">Status</Label>
-          <Select
-            value={status}
-            onValueChange={setStatus}
-            disabled={isPending}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Pilih status event" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="draft">Draft (Disimpan)</SelectItem>
-              <SelectItem value="published">Published (Umum)</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+          <div className="space-y-2">
+            <Label htmlFor="startDate">Tanggal Mulai</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !startDate && "text-muted-foreground"
+                  )}
+                  disabled={isPending}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {startDate ? (
+                    format(startDate, "PPP")
+                  ) : (
+                    <span>Pilih tanggal</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={startDate}
+                  onSelect={setStartDate}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="endDate">Tanggal Berakhir</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !endDate && "text-muted-foreground"
+                  )}
+                  disabled={isPending}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {endDate ? (
+                    format(endDate, "PPP")
+                  ) : (
+                    <span>Pilih tanggal</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={endDate}
+                  onSelect={setEndDate}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* --- Tanggal --- */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="flex flex-col space-y-2">
-          <Label htmlFor="startDate">Tanggal Mulai</Label>
-          <input
-            id="startDate"
-            type="date"
-            value={startDate ? format(startDate, "yyyy-MM-dd") : ""}
-            onChange={(e) => setStartDate(new Date(e.target.value))}
-            disabled={isPending}
-            className="border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-        </div>
-        <div className="flex flex-col space-y-2">
-          <Label htmlFor="endDate">Tanggal Berakhir</Label>
-          <input
-            id="endDate"
-            type="date"
-            value={endDate ? format(endDate, "yyyy-MM-dd") : ""}
-            onChange={(e) => setEndDate(new Date(e.target.value))}
-            disabled={isPending}
-            className="border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-        </div>
-      </div>
-      <div className="space-y-4">
-        <Label className="text-base">Tiket</Label>
+      {/* --- Card 3: Kategori & Status --- */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Kategori & Status</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <Label htmlFor="category">Kategori</Label>
+            <Select name="category" required disabled={isPending}>
+              <SelectTrigger id="category">
+                <SelectValue placeholder="Pilih kategori" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="konser">Konser</SelectItem>
+                <SelectItem value="workshop">Workshop</SelectItem>
+                <SelectItem value="sport">Sport</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="status">Status</Label>
+            <Select
+              value={status}
+              onValueChange={setStatus}
+              disabled={isPending}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih status event" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="draft">Draft (Disimpan)</SelectItem>
+                <SelectItem value="published">Published (Umum)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* --- Bagian 4: Tipe Tiket --- */}
+      <div className="space-y-6">
+        <h2 className="text-2xl font-semibold">Tipe Tiket</h2>
         {ticketTypes.map((tt, index) => (
-          <div
-            key={index}
-            className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end border p-3 rounded-md"
-          >
-            <div className="md:col-span-2 space-y-2">
-              <Label>Nama Tiket</Label>
-              <Input
-                value={tt.name}
-                onChange={(e) =>
-                  updateTicketType(index, "name", e.target.value)
-                }
-                placeholder="VIP / Regular"
-              />
-            </div>
-            <div className="md:col-span-2 space-y-2">
-              <Label>Deskripsi</Label>
-              <Input
-                value={tt.description}
-                onChange={(e) =>
-                  updateTicketType(index, "description", e.target.value)
-                }
-                placeholder="Kursi depan, dll"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Harga</Label>
-              <Input
-                type="text"
-                inputMode="numeric"
-                value={
-                  tt.price
-                    ? `Rp ${new Intl.NumberFormat("id-ID").format(tt.price)}`
-                    : ""
-                }
-                onChange={(e) => {
-                  // Hilangkan semua karakter kecuali angka
-                  const raw = e.target.value.replace(/\D/g, "");
-                  const numericValue = raw ? parseInt(raw, 10) : 0;
-                  updateTicketType(index, "price", numericValue);
-                }}
-                placeholder="Rp 10.000"
-              />
-            </div>
-
-
-            <div className="space-y-2">
-              <Label>Stok</Label>
-              <Input
-                type="number"
-                min={0}
-                value={tt.total_stock}
-                onChange={(e) =>
-                  updateTicketType(index, "total_stock", Number(e.target.value))
-                }
-              />
-            </div>
-            <div className="md:col-span-3 space-y-2">
-              <Label>Mulai Penjualan</Label>
-              <Input
-                type="datetime-local"
-                onChange={(e) =>
-                  updateTicketType(
-                    index,
-                    "sales_start_date",
-                    e.target.value ? new Date(e.target.value) : undefined
-                  )
-                }
-              />
-            </div>
-            <div className="md:col-span-3 space-y-2">
-              <Label>Berakhir Penjualan</Label>
-              <Input
-                type="datetime-local"
-                onChange={(e) =>
-                  updateTicketType(
-                    index,
-                    "sales_end_date",
-                    e.target.value ? new Date(e.target.value) : undefined
-                  )
-                }
-              />
-            </div>
-            <div className="flex gap-2">
+          <Card key={index}>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Tiket #{index + 1}</CardTitle>
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
+                size="icon"
                 onClick={() => removeTicketType(index)}
               >
-                Hapus
+                <Trash2 className="h-4 w-4 text-red-500" />
               </Button>
-              {index === ticketTypes.length - 1 && (
-                <Button type="button" onClick={addTicketType}>
-                  Tambah Tiket
-                </Button>
-              )}
-            </div>
-          </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label>Nama Tiket</Label>
+                  <Input
+                    value={tt.name}
+                    onChange={(e) =>
+                      updateTicketType(index, "name", e.target.value)
+                    }
+                    placeholder="Mis: VIP, Reguler"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Deskripsi</Label>
+                  <Input
+                    value={tt.description}
+                    onChange={(e) =>
+                      updateTicketType(index, "description", e.target.value)
+                    }
+                    placeholder="Mis: Kursi depan, Early Bird"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Harga</Label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    value={
+                      tt.price
+                        ? `Rp ${new Intl.NumberFormat("id-ID").format(
+                            tt.price
+                          )}`
+                        : ""
+                    }
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/\D/g, "");
+                      updateTicketType(index, "price", raw ? parseInt(raw) : 0);
+                    }}
+                    placeholder="Rp 0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Stok</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={tt.total_stock}
+                    onChange={(e) =>
+                      updateTicketType(
+                        index,
+                        "total_stock",
+                        Number(e.target.value)
+                      )
+                    }
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label>Mulai Penjualan</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !tt.sales_start_date && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {tt.sales_start_date ? (
+                          format(tt.sales_start_date, "PPP")
+                        ) : (
+                          <span>Pilih tanggal</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={tt.sales_start_date}
+                        onSelect={(date) =>
+                          updateTicketType(index, "sales_start_date", date)
+                        }
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="space-y-2">
+                  <Label>Berakhir Penjualan</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !tt.sales_end_date && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {tt.sales_end_date ? (
+                          format(tt.sales_end_date, "PPP")
+                        ) : (
+                          <span>Pilih tanggal</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={tt.sales_end_date}
+                        onSelect={(date) =>
+                          updateTicketType(index, "sales_end_date", date)
+                        }
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         ))}
-        {ticketTypes.length === 0 && (
-          <Button type="button" onClick={addTicketType}>
-            Tambah Tiket
-          </Button>
-        )}
+
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={addTicketType}
+        >
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Tambah Tipe Tiket
+        </Button>
       </div>
 
       {/* --- Submit --- */}
-      <Button type="submit" disabled={isPending} className="w-full">
+      <Button
+        type="submit"
+        disabled={isPending}
+        className="w-full text-lg py-6"
+      >
         {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         {isPending ? "Menyimpan..." : "Buat Event"}
       </Button>

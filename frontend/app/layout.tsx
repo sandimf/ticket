@@ -4,6 +4,7 @@ import "./globals.css";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { Toaster } from "sonner";
 import { Navbar02 } from "@/components/navbar/Navbar";
+import { AppSessionProvider } from "@/components/providers/session-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,13 +21,13 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <QueryProvider>
-          <Navbar02 />
-          <main>
-            {children}
-          </main>
-          <Toaster position="top-center" richColors />
-        </QueryProvider>
+        <AppSessionProvider>
+          <QueryProvider>
+            <Navbar02 />
+            <main>{children}</main>
+            <Toaster position="top-center" richColors />
+          </QueryProvider>
+        </AppSessionProvider>
       </body>
     </html>
   );

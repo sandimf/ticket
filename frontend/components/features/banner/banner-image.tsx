@@ -24,7 +24,7 @@ export function BannerImage() {
   )
 
   return (
-    <Carousel 
+    <Carousel
       className="w-full"
       plugins={[plugin.current]}
       opts={{
@@ -39,7 +39,11 @@ export function BannerImage() {
           <CarouselItem key={index}>
             <div className="p-1">
               <Card className="border-0 shadow-none">
-                <CardContent className="relative w-full aspect-[4/1] overflow-hidden rounded-lg">
+                {/* PERUBAHAN DI SINI:
+                  - aspect-[2/1]   : Default untuk mobile (lebih tinggi)
+                  - md:aspect-[3/1] : Untuk tablet dan desktop (lebih lebar)
+                */}
+                <CardContent className="relative w-full aspect-[2/1] md:aspect-[3/1] overflow-hidden rounded-lg">
                   <Image
                     src={src}
                     alt={`Banner ${index + 1}`}
@@ -53,8 +57,11 @@ export function BannerImage() {
           </CarouselItem>
         ))}
       </CarouselContent>
-      <CarouselPrevious className="left-4 top-1/2 -translate-y-1/2" />
-      <CarouselNext className="right-4 top-1/2 -translate-y-1/2" />
+      {/* Tombol navigasi ini akan muncul di atas gambar. 
+        Ini sudah OK karena kita sudah memberi ruang yang cukup dengan aspect-[2/1]
+      */}
+      <CarouselPrevious className="absolute left-4 top-1/2 -translate-y-1/2" />
+      <CarouselNext className="absolute right-4 top-1/2 -translate-y-1/2" />
     </Carousel>
   )
 }

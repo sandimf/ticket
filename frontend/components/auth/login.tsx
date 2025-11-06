@@ -1,16 +1,35 @@
 'use client';
-import { useState } from 'react';
-import { useLogin } from '@/hooks/useLogin';
+import { useState, useEffect } from 'react';
+import { signIn, useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 export default function Login() {
   const [identity, setIdentity] = useState('');
   const [password, setPassword] = useState('');
-  const { mutate: login, isPending, isError } = useLogin();
+  const { data: session, status } = useSession();
+  const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Auto redirect if already authenticated
+  useEffect(() => {
+    if (status === 'authenticated') {
+      router.replace('/');
+    }
+  }, [status, router]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    login({ identity, password });
+    const res = await signIn('credentials', {
+      redirect: false,
+      identity,
+      password,
+    });
+    if (res?.ok) {
+      // Legacy cookies already set by /api/auth/login route; NextAuth session is active
+      router.push('/');
+    }
   };
+
+  const isPending = status === 'loading';
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-sm mx-auto">
@@ -40,7 +59,6 @@ export default function Login() {
       <button type="submit" disabled={isPending} className="w-full rounded bg-black text-white py-2 disabled:opacity-50">
         {isPending ? 'Masuk...' : 'Masuk'}
       </button>
-      {isError && <p className="text-red-600 text-sm">Terjadi kesalahan saat login</p>}
     </form>
   );
 }

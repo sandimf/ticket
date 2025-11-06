@@ -14,26 +14,13 @@ import (
 	"github.com/google/uuid" // Import UUID untuk nama file unik
 )
 
-// generateSlug creates a URL-friendly slug from a string
-func generateSlug(s string) string {
-	// Convert to lowercase
-	s = strings.ToLower(s)
-	
-	// Replace spaces with hyphens
-	s = strings.ReplaceAll(s, " ", "-")
-	
-	// Remove special characters
-	reg := regexp.MustCompile("[^a-z0-9-]")
-	s = reg.ReplaceAllString(s, "")
-	
-	// Replace multiple hyphens with a single one
-	reg = regexp.MustCompile("-+")
-	s = reg.ReplaceAllString(s, "-")
-	
-	// Trim hyphens from start and end
-	s = strings.Trim(s, "-")
-	
-	return s
+// Helper untuk membuat slug dari judul
+func generateSlug(title string) string {
+	re := regexp.MustCompile("[^a-zA-Z0-9]+")
+	slug := strings.ToLower(title)
+	slug = re.ReplaceAllString(slug, "-")
+	slug = strings.Trim(slug, "-")
+	return slug
 }
 
 //  Event Handlers
@@ -42,7 +29,8 @@ func generateSlug(s string) string {
 func GetAllEvents(c *fiber.Ctx) error {
 	db := database.DB
 	var events []model.Event
-	db.Find(&events)
+	// Preload TicketTypes agar harga tiket tersedia di listing events
+	db.Preload("TicketTypes").Find(&events)
 	return c.JSON(fiber.Map{"status": "success", "message": "All events", "data": events})
 }
 
@@ -144,6 +132,7 @@ func CreateEvent(c *fiber.Ctx) error {
 		EndDateTime:    endTime,
 		Status:         c.FormValue("status"),
 		PosterImageURL: fileURL, 
+		Featured:       false,
 	}
 
 	if event.Status == "" {
@@ -182,6 +171,7 @@ func UpdateEvent(c *fiber.Ctx) error {
 	event.EndDateTime = updateData.EndDateTime
 	event.PosterImageURL = updateData.PosterImageURL
 	event.Status = updateData.Status
+	event.Featured = updateData.Featured
 	db.Save(&event)
 	return c.JSON(fiber.Map{"status": "success", "message": "Event successfully updated", "data": event})
 }
@@ -196,4 +186,29 @@ func DeleteEvent(c *fiber.Ctx) error {
 	}
 	db.Delete(&event)
 	return c.JSON(fiber.Map{"status": "success", "message": "Event successfully deleted", "data": nil})
+}
+
+// ToggleEventFeatured: set featured true/false
+func ToggleEventFeatured(c *fiber.Ctx) error {
+	id := c.Params("id")
+	db := database.DB
+	var event model.Event
+	if err := db.First(&event, id).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "No event found with ID", "data": nil})
+	}
+
+	// Payload sederhana: { featured: true/false }
+	var payload struct {
+		Featured bool `json:"featured"`
+	}
+	if err := c.BodyParser(&payload); err != nil {
+		return c.Status(400).JSON(fiber.Map{"status": "error", "message": "Invalid request body", "data": err.Error()})
+	}
+
+	event.Featured = payload.Featured
+	if err := db.Save(&event).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to update featured flag", "data": err.Error()})
+	}
+
+	return c.JSON(fiber.Map{"status": "success", "message": "Event featured flag updated", "data": event})
 }

@@ -55,6 +55,7 @@ func ConnectDB() {
 		&model.OrderItem{},
 		&model.TicketType{},
 		&model.IssuedTicket{},
+		&model.Banner{},
 	)
 	if err != nil {
 		log.Fatal("Failed to migrate database: ", err)

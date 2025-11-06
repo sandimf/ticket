@@ -35,6 +35,18 @@ export const getOrderById = async (orderId: number): Promise<ApiResponse<Order>>
   return response.json();
 };
 
+export const getOrderByInvoice = async (invoice: string): Promise<ApiResponse<Order>> => {
+  const response = await fetch(`/api/orders/invoice/${invoice}`, {
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    throw new Error('Gagal mengambil data order berdasarkan invoice');
+  }
+
+  return response.json();
+};
+
 export const updateOrderStatus = async (orderId: number, paymentStatus: string): Promise<ApiResponse<Order>> => {
   const response = await fetch(`/api/orders/${orderId}/status`, {
     method: 'PATCH',
@@ -46,6 +58,22 @@ export const updateOrderStatus = async (orderId: number, paymentStatus: string):
 
   if (!response.ok) {
     throw new Error('Gagal memperbarui status pembayaran');
+  }
+
+  return response.json();
+};
+
+export const updateOrderStatusByInvoice = async (invoice: string, paymentStatus: string): Promise<ApiResponse<Order>> => {
+  const response = await fetch(`/api/orders/invoice/${invoice}/status`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ payment_status: paymentStatus }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Gagal memperbarui status pembayaran berdasarkan invoice');
   }
 
   return response.json();

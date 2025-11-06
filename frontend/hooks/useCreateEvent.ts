@@ -1,43 +1,27 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { useMutation } from "@tanstack/react-query";
 import { Event } from "@/types/type";
-import { queryKeys } from "@/lib/query/keys";
 
-// --- 🚀 PERUBAHAN DI SINI ---
-// Fungsi mutation sekarang hanya menerima FormData
+// Fungsi mutation sekarang hanya menerima FormData dan mengembalikan Event (json.data)
 const createEvent = async (formData: FormData): Promise<Event> => {
-  // Langsung kirim FormData.
-  // Browser akan otomatis mengatur Content-Type: multipart/form-data
   const response = await fetch("/api/events", {
     method: "POST",
     body: formData,
   });
 
+  const json = await response.json();
+
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || "Gagal membuat event baru");
+    throw new Error(json?.message || "Gagal membuat event baru");
   }
 
-  return response.json();
+  // Normalisasi: backend mengirim { status, message, data: event }
+  const data = json?.data ?? json;
+  return data as Event;
 };
-// -----------------------------
 
 export const useCreateEvent = () => {
-  const queryClient = useQueryClient();
-  const router = useRouter();
-
   return useMutation({
-    // Tipe data di sini sekarang adalah FormData
+    // Tipe data di sini adalah FormData, hasilnya Event
     mutationFn: (formData: FormData) => createEvent(formData),
-
-    onSuccess: (data) => {
-      toast.success(`Event "${data.title}" berhasil dibuat!`);
-      queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
-      router.push("/events"); // Redirect setelah sukses
-    },
-    onError: (error) => {
-      toast.error(error.message);
-    },
   });
 };

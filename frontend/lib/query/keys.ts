@@ -7,4 +7,8 @@ export const queryKeys = {
   users: {
     all: ["users"] as const,
   },
+  banners: {
+    all: ["banners"] as const,
+    detail: (id: string) => ["banners", id] as const,
+  },
 };

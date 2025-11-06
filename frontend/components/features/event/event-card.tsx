@@ -15,17 +15,21 @@ interface EventCardProps {
   event: Event;
 }
 
-interface EventCardProps {
-  event: Event;
-}
-
 export function EventCard({ event }: EventCardProps) {
+  const firstTicketPrice = event.ticket_types?.[0]?.price;
+  const priceLabel =
+    firstTicketPrice == null
+      ? "—"
+      : Number(firstTicketPrice) > 0
+      ? `Rp ${Number(firstTicketPrice).toLocaleString("id-ID")}`
+      : "Gratis";
+
   return (
     <Link href={`/events/${event.slug || event.id}`}>
       <Card className="flex flex-col overflow-hidden w-full text-sm rounded-lg hover:shadow-lg transition-shadow p-0">
         <div className="relative w-full aspect-[16/9]">
           <Image
-            src={event.poster_image_url}
+            src={event.poster_image_url || "/banner.jpeg"}
             alt={event.title}
             fill
             className="object-cover"
@@ -35,7 +39,7 @@ export function EventCard({ event }: EventCardProps) {
         {/* Judul & Tanggal */}
         <CardHeader className="px-4">
           <CardTitle className="text-base truncate">{event.title}</CardTitle>
-          <div className="flex items-center text-sm text-gray-600">
+          <div className="flex flex-col text-sm text-gray-600">
             <span>
               {new Date(event.start_datetime).toLocaleDateString("id-ID", {
                 day: "2-digit",
@@ -43,6 +47,7 @@ export function EventCard({ event }: EventCardProps) {
                 year: "numeric",
               })}
             </span>
+            <span className="truncate">{event.city || event.venue_name}</span>
           </div>
         </CardHeader>
         <Separator />
@@ -52,10 +57,9 @@ export function EventCard({ event }: EventCardProps) {
           <div className="flex items-center justify-between text-sm text-gray-600">
             <div className="flex items-center space-x-2">
               <span className="text-lg font-bold text-indigo-600">
-              Rp 10.000
-            </span>
+                {priceLabel}
+              </span>
             </div>
-            
           </div>
         </CardContent>
       </Card>

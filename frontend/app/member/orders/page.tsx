@@ -6,7 +6,6 @@ import { getUserOrders } from '@/lib/api/order-api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { cookies } from 'next/headers';
 
 export default function OrdersPage() {
   const router = useRouter();
@@ -106,7 +105,7 @@ export default function OrdersPage() {
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      onClick={() => router.push(`/member/orders/${order.id}`)}
+                      onClick={() => router.push(`/member/orders/${order.invoice_code}`)}
                     >
                       Detail
                     </Button>
@@ -114,7 +113,7 @@ export default function OrdersPage() {
                     {order.payment_status === 'pending' && (
                       <Button 
                         size="sm" 
-                        onClick={() => router.push(`/member/orders/${order.id}/payment`)}
+                        onClick={() => router.push(`/member/orders/${order.invoice_code}/payment`)}
                       >
                         Bayar Sekarang
                       </Button>

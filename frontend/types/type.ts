@@ -33,7 +33,7 @@ export interface OrderItem {
 }
 
 export interface CreateOrderRequest {
-  user_id: number;
+  user_id?: number; // optional untuk guest order
   items: OrderItem[];
 }
 
@@ -47,4 +47,14 @@ export interface Order {
   created_at: string;
   updated_at: string;
   order_items?: OrderItem[];
+}
+export interface Banner {
+  id: number;
+  title: string;
+  image_url: string;
+  link_url?: string;
+  active: boolean;
+  order: number;
+  created_at: string;
+  updated_at: string;
 }

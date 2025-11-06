@@ -2,21 +2,30 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getOrderById } from '@/lib/api/order-api';
+import { getOrderByInvoice } from '@/lib/api/order-api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
-export default function OrderDetailPage({ params }: { params: { id: string } }) {
+export default function OrderDetailPage({ params }: { params: { invoice: string } }) {
   const router = useRouter();
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [invoiceCode, setInvoiceCode] = useState<string>('');
 
   useEffect(() => {
+    // Simpan invoice ke state untuk menghindari penggunaan params.invoice langsung
+    setInvoiceCode(params.invoice);
+  }, [params]);
+
+  useEffect(() => {
+    // Hanya jalankan fetch jika invoiceCode sudah tersedia
+    if (!invoiceCode) return;
+    
     const fetchOrder = async () => {
       try {
-        const response = await getOrderById(parseInt(params.id, 10));
+        const response = await getOrderByInvoice(invoiceCode);
         setOrder(response.data);
       } catch (err) {
         setError('Gagal memuat data order');
@@ -27,7 +36,7 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
     };
 
     fetchOrder();
-  }, [params.id]);
+  }, [invoiceCode]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -58,7 +67,6 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-3xl mx-auto">
           <h1 className="text-2xl font-bold mb-6">Detail Pemesanan</h1>
-          <p>Memuat data pemesanan...</p>
         </div>
       </div>
     );
@@ -162,7 +170,7 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
             </Button>
             
             {order.payment_status === 'pending' && (
-              <Button onClick={() => router.push(`/member/orders/${order.id}/payment`)}>
+              <Button onClick={() => router.push(`/member/orders/${order.invoice_code}/payment`)}>
                 Lanjutkan Pembayaran
               </Button>
             )}

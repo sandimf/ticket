@@ -3,7 +3,7 @@ import { cookies, headers } from 'next/headers';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const headersList = await headers();
   const host = headersList.get('host') ?? 'localhost:3000';
@@ -14,7 +14,8 @@ export async function GET(
   const GO_BACKEND_URL = process.env.GO_BACKEND_URL || 'http://localhost:5000/api';
   
   try {
-    const response = await fetch(`${GO_BACKEND_URL}/order/${params.id}`, {
+    const { id } = await params;
+    const response = await fetch(`${GO_BACKEND_URL}/order/${id}`, {
       headers: {
         'Authorization': token ? `Bearer ${token}` : '',
       },
